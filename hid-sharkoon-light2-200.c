@@ -9,26 +9,31 @@
 #include "hid-sharkoon-light2-200.h"
 
 
-
-
-#define SHARKOON_LIGHT2_200_CMD_GET_REPORT 0x01;
-#define SHARKOON_LIGHT2_200_CMD_SET_REPORT 0x02;
-
-
-struct sharkoon_report_color {
+/**
+ * LED color in simple RGB
+ */
+struct sharkoon_color {
     unsigned char red;
     unsigned char green;
     unsigned char blue;
 };
 
-struct sharkoon_report_dpi_level {
-    unsigned char y_offset : 4;
-    unsigned char x_offset : 4;
-    unsigned char x_value;
-    unsigned char y_value;
+/**
+ * DPI for x- and y axis is stored in steps of 50. The regular value must be divided by 50.
+ * The device supports regular values between 50 and 16000.
+ * As x and y are limited to one byte, the rest is stored in an offset byte.
+ * The first 4 bits are for x and the last 4 for y.
+ * Sample
+ * 0x0 0x1 0xf0 0x2c  | x = 240  Ofx = 0 | ((Ofx * 256) + y) * 50 => 12000 DPI 
+ * Ofx Ofy  x    y    | y = 44   Ofy = 1 | ((Ofy * 256) + x) * 50 => 15000 DPI
+ */
+struct sharkoon_dpi_level {
+    unsigned char offset;
+    unsigned char x;
+    unsigned char y;
 };
 
-struct sharkoon_report_dpi_settings {
+struct sharkoon_dpi_settings {
     /**
      * byte 9 
      * DPI steps 1-7  ON/OFF bit mask  1=on / 0=off
@@ -48,16 +53,16 @@ struct sharkoon_report_dpi_settings {
      * bytes 10-30 
      * dpi level for each step
      */
-    struct sharkoon_report_dpi_level dpi1;
-    struct sharkoon_report_dpi_level dpi2;
-    struct sharkoon_report_dpi_level dpi3;
-    struct sharkoon_report_dpi_level dpi4;
-    struct sharkoon_report_dpi_level dpi5;
-    struct sharkoon_report_dpi_level dpi6;
-    struct sharkoon_report_dpi_level dpi7;
+    struct sharkoon_dpi_level dpi1;
+    struct sharkoon_dpi_level dpi2;
+    struct sharkoon_dpi_level dpi3;
+    struct sharkoon_dpi_level dpi4;
+    struct sharkoon_dpi_level dpi5;
+    struct sharkoon_dpi_level dpi6;
+    struct sharkoon_dpi_level dpi7;
 };
 
-struct sharkoon_report_illumination_settings {
+struct sharkoon_illumination_settings {
     /**
      * byte 38 LED effect type
      * value range : 0-9
@@ -91,36 +96,43 @@ struct sharkoon_report_illumination_settings {
     /**
      * bytes 43-63 color definitions 1-7
      */
-    struct sharkoon_report_color color1;
-    struct sharkoon_report_color color2;
-    struct sharkoon_report_color color3;
-    struct sharkoon_report_color color4;
-    struct sharkoon_report_color color5;
-    struct sharkoon_report_color color6;
-    struct sharkoon_report_color color7;
+    struct sharkoon_color color1;
+    struct sharkoon_color color2;
+    struct sharkoon_color color3;
+    struct sharkoon_color color4;
+    struct sharkoon_color color5;
+    struct sharkoon_color color6;
+    struct sharkoon_color color7;
 };
 
-// 64-bytes
-struct sharkoon_report {
+/**
+ * message for set / get device settings
+ * size: 64 bytes
+ */
+struct sharkoon_message_settings {
     /**
-     * bytes 1-3
-     * on set/get commands 0x04, 0xa0, 0x01
-     * on DPI key press / DPI step change  0x04, 0xa2, 0x02
+     * byte 1 - version of the data protocoll
+     * value: 0x04
      */
-    unsigned char header[3];
+    unsigned char version;
+
+    /**
+     * bytes 2-3 - message type
+     * value: 0xA001
+     */
+    unsigned char message_type[2];
 
     /**
      * byte 4 command for get or set settings
-     * SHARKOON_LIGHT2_200_CMD_GET_REPORT - get report with current mouse settings
-     * SHARKOON_LIGHT2_200_CMD_SET_REPORT - submit report to change mouse settings
-     * on DPI key press / DPI step change
+     * 0x01 - get message with current mouse settings
+     * 0x02 - submit message to change mouse settings
      */
     unsigned char command;
 
     /**
      * bytes 5-7 UNKNOWN
-     * 0x00, 0x00, 0x00 on SHARKOON_LIGHT2_200_CMD_GET_REPORT
-     * 0x01, 0x02, 0xa5 on SHARKOON_LIGHT2_200_CMD_SET_REPORT
+     * 0x00, 0x00, 0x00 on 0x01
+     * 0x01, 0x02, 0xa5 on 0x02
      */
     unsigned char unknownByte5;
     unsigned char unknownByte6;
@@ -128,15 +140,15 @@ struct sharkoon_report {
 
     /**
      * byte 8
-     * current DPI step number of the device 1-7
+     * current DPI step number of the device (1-7)
      * values: 0-6
      */
-    unsigned char unknownByte8;
+    unsigned char dpi_step_id;
 
     /**
      * bytes 9-30 DPI setting
      */
-    struct sharkoon_report_dpi_settings dpi_settings;
+    struct sharkoon_dpi_settings dpi_settings;
 
     /**
      * bytes 31-33 UNKNOWN
@@ -165,7 +177,7 @@ struct sharkoon_report {
     /**
      * bytes 38-64 DPI setting
      */
-    struct sharkoon_report_illumination_settings illumination_settings;
+    struct sharkoon_illumination_settings illumination_settings;
 
     /**
      * byte 64 UNKNOWN
@@ -175,115 +187,156 @@ struct sharkoon_report {
 };
 
 /**
- * human readable DPI level values for x-axis and y-axis
- * values: between 50 and 16000 in steps of 50
+ * 64 bytes 
+ * message is send on DPI changed by device
  */
-struct sharkoon_dpi_level_human_readable {
-    unsigned short x;
-    unsigned short y;
+struct sharkoon_message_dpi_changed {
+    /**
+     * byte 1 - version of the data protocoll
+     * value: 0x04
+     */
+    unsigned char version;
+
+    /**
+     * bytes 2-3 - message type
+     * value: 0xA202
+     */
+    unsigned char message_type[2];
+
+    /**
+     * byte 4 - DPI step number of the device (1-7)
+     * values: 0-6
+     */
+    unsigned char dpi_step_id;
+
+    /**
+     * byte 5-7 - DPI values
+     */
+    struct sharkoon_dpi_level dpi;
+
+    /**
+     * byte 8-64 - zero bytes
+     */
+    unsigned char zero_bytes[57];
 };
 
+
+
 /**
- * creates DPI level report from human readable dpi values
+ * creates DPI level message from human readable dpi values
  * \param x DPI value of y-axis in human readable units (value range between 50 and 16000 in steps of 50)
  * \param y DPI value of y-axis in human readable units (value range between 50 and 16000 in steps of 50)
- * \return struct sharkoon_report_dpi_level - for usage in sharkoon_report_dpi_settings
+ * \return struct sharkoon_dpi_level - for usage in sharkoon_dpi_settings
  */
-struct sharkoon_report_dpi_level sharkoon_dpi_create_level_report_from_human_readable_values(unsigned short x, unsigned short y) 
+struct sharkoon_dpi_level sharkoon_dpi_create_level_message_from_human_readable_values(unsigned short x, unsigned short y) 
 {
-    struct sharkoon_report_dpi_level dpi_report = { 0 };
+    struct sharkoon_dpi_level dpi = { 0 };
 
     x /= 50;
     y /= 50;
 
-    dpi_report.x_value  = x & 0xFF;
-    dpi_report.y_value  = y & 0xFF;
-    dpi_report.x_offset = (x >> 8) & 0xF;
-    dpi_report.y_offset = (y >> 8) & 0xF;
+    dpi.x = x & 0xFF;
+    dpi.y = y & 0xFF;
 
-    return dpi_report;
+    //  0x0 [0x1] 0x0 0x0
+    // [0x1] 0x0
+    dpi.offset = (x >> 4) & 0xF0;
+
+    // 0x0 [0x1] 0x0 0x0
+    // 0x0 [0x1]
+    dpi.offset |= (y >> 8) & 0x0F;
+
+    return dpi;
 }
 
 /**
- * get human readable dpi values from a DPI level report
+ * get human readable dpi values from a DPI level message
+ * \param dpi [IN] DPI level message
+ * \param x [OUT] DPI value of y-axis in human readable units (value range between 50 and 16000 in steps of 50)
+ * \param y [OUT] DPI value of y-axis in human readable units (value range between 50 and 16000 in steps of 50)
  */
-struct sharkoon_dpi_level_human_readable sharkoon_dpi_get_human_readable_values_from_level_report(struct sharkoon_report_dpi_level *dpi_report) 
+void sharkoon_dpi_get_human_readable_values_from_level_message(struct sharkoon_dpi_level *dpi, unsigned short *x, unsigned short *y)
 {
-    struct sharkoon_dpi_level_human_readable dpi_human = { 0 };
+    //           [0x1] 0x0
+    // 0x0 [0x1]  0x0  0x0
+    *x  = (dpi->offset << 4) & 0x0F00;
+    *x |= dpi->x;
+    *x *= 50;
 
-    dpi_human.x = ((dpi_report->x_offset << 8) & 0x0F00);
-    dpi_human.x |= dpi_report->x_value;
-    dpi_human.x *= 50;
-
-    dpi_human.y = ((dpi_report->y_offset << 8) & 0x0F00);
-    dpi_human.y |= dpi_report->y_value;
-    dpi_human.y *= 50;
-
-    return dpi_human;
+    //           0x0 [0x1]
+    // 0x0 [0x1] 0x0  0x0
+    *y  = (dpi->offset << 8) & 0x0F00;
+    *y |= dpi->y;
+    *y *= 50;
 }
 
 /**
- * create an empty get report which can used to ask the device for current settings
+ * create an empty get message which can used to ask the device for current settings
  */
-static struct sharkoon_report sharkoon_create_empty_get_report(void) {
-    struct sharkoon_report rep = { 0 };
-    
-    rep.header[0] = 0x04;
-    rep.header[1] = 0xa0;
-    rep.header[2] = 0x01;
+static struct sharkoon_message_settings sharkoon_create_empty_get_message(void) {
+    struct sharkoon_message_settings rep = { 0 };
 
-    rep.command = SHARKOON_LIGHT2_200_CMD_GET_REPORT;
+    rep.version = 0x04;
+    rep.message_type[0] = 0xA0;
+    rep.message_type[1] = 0x01;
+    rep.command = 0x01;
 
     return rep;
 }
 
 /**
- * create an empty set report to send settings to the device
+ * create an empty set message to send settings to the device
  */
-static struct sharkoon_report sharkoon_create_empty_set_report(void) {
+static struct sharkoon_message_settings sharkoon_create_empty_set_message(void) {
 
-    struct sharkoon_report rep = { 0 };
+    struct sharkoon_message_settings rep = { 0 };
     
-    rep.header[0] = 0x04;
-    rep.header[1] = 0xa0;
-    rep.header[2] = 0x01;
+    rep.version = 0x04;
+    rep.message_type[0] = 0xA0;
+    rep.message_type[1] = 0x01;
+    rep.command = 0x02;
 
-    rep.command = SHARKOON_LIGHT2_200_CMD_SET_REPORT;
     rep.unknownByte5 = 0x01;
     rep.unknownByte6 = 0x02;
     rep.unknownByte7 = 0xa5;
-    rep.unknownByte8 = 0x01;
+
+    rep.dpi_step_id = 0x01;
 
     return rep;
 }
 
 /**
- * reset device to default settings with disabled illimination
+ * creates a settings message with default settings bit with all illumination disabled
  */
-static struct sharkoon_report sharkoon_create_empty_set_defaults_no_illumintaion_report(void) {
+static struct sharkoon_message_settings sharkoon_create_test_message(void) {
 
-    struct sharkoon_report rep = sharkoon_create_empty_set_report();
-
-    struct sharkoon_report_dpi_level dpi_rep = sharkoon_dpi_create_level_report_from_human_readable_values(16000, 16000);
+    struct sharkoon_message_settings msg = sharkoon_create_empty_set_message();
     
-    rep.lod = 2;
+    msg.lod = 2;
 
-    rep.dpi_settings.dpi2_enabled = 1;
-    rep.dpi_settings.dpi1 = dpi_rep;
-    rep.dpi_settings.dpi2 = dpi_rep;
-    rep.dpi_settings.dpi3 = dpi_rep;
-    rep.dpi_settings.dpi4 = dpi_rep;
-    rep.dpi_settings.dpi5 = dpi_rep;
-    rep.dpi_settings.dpi6 = dpi_rep;
-    rep.dpi_settings.dpi7 = dpi_rep;
+    msg.dpi_settings.dpi1_enabled = 1;
+    msg.dpi_settings.dpi2_enabled = 1;
+    msg.dpi_settings.dpi3_enabled = 1;
+    msg.dpi_settings.dpi4_enabled = 1;
+    msg.dpi_settings.dpi5_enabled = 1;
+    msg.dpi_settings.dpi6_enabled = 1;
+    msg.dpi_settings.dpi7_enabled = 1;
 
-    //rep.illumination_settings.profile_id = 1;
-    rep.illumination_settings.led_effect = 9;
-    //rep.illumination_settings.led_frequency = 2;
-    //rep.illumination_settings.led_brightness = 10;
-    //rep.illumination_settings.unknownByte41 = 1;
+    msg.dpi_settings.dpi1 = sharkoon_dpi_create_level_message_from_human_readable_values(400, 400);
+    msg.dpi_settings.dpi2 = sharkoon_dpi_create_level_message_from_human_readable_values(800, 800);;
+    msg.dpi_settings.dpi3 = sharkoon_dpi_create_level_message_from_human_readable_values(1200, 1200);;
+    msg.dpi_settings.dpi4 = sharkoon_dpi_create_level_message_from_human_readable_values(2400, 2400);;
+    msg.dpi_settings.dpi5 = sharkoon_dpi_create_level_message_from_human_readable_values(3200, 3200);;
+    msg.dpi_settings.dpi6 = sharkoon_dpi_create_level_message_from_human_readable_values(6400, 6400);;
+    msg.dpi_settings.dpi7 = sharkoon_dpi_create_level_message_from_human_readable_values(16000, 16000);;
 
-    return rep;
+    msg.illumination_settings.profile_id = 1;
+    msg.illumination_settings.led_effect = 9;
+    msg.illumination_settings.led_frequency = 2;
+    msg.illumination_settings.led_brightness = 10;
+    msg.illumination_settings.unknownByte41 = 1;
+
+    return msg;
 }
 
 ///////////////////////////////////////////////////////////////
@@ -301,9 +354,6 @@ static struct sharkoon_report sharkoon_create_empty_set_defaults_no_illumintaion
  */
 static void sharkoon_light2_200_irq_out(struct urb *urb)
 {
-//     struct hid_device *hid = urb->context;
-// 	struct sharkoon_light2_200_device *sharkoon_dev = hid_get_drvdata(hid);
-
 	switch (urb->status) {
 	case 0:			/* success */
         printk(KERN_DEBUG "sharkoon_light2_200_irq_out() success \n");
@@ -336,12 +386,12 @@ static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct de
 
     if (!sharkoon_dev->urbout)
     {
-        struct sharkoon_report report = sharkoon_create_empty_set_defaults_no_illumintaion_report();
+        struct sharkoon_message_settings msg = sharkoon_create_test_message();
 
         sharkoon_dev->urbout = usb_alloc_urb(0, GFP_KERNEL);
 
         // data
-        sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &report, 64);
+        sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &msg, 64);
 
         usb_fill_int_urb(sharkoon_dev->urbout, 
             usbdev, 
