@@ -4,7 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/lib/modules/5.4.39-1-MANJARO/build/include"
+                "/lib/modules/5.4.40-1-MANJARO/build/include",
+                "/lib/modules/5.4.40-1-MANJARO/build/arch/x86/include",
+                "/lib/modules/5.4.40-1-MANJARO/build/arch/x86/include/generated"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
