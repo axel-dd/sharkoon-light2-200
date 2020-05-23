@@ -4,7 +4,36 @@
 #include <linux/usb.h>
 #include <linux/hid.h>
 
-#include "hid-sharkoon-light2-200.h"
+#define USB_VENDOR_ID_SHARKOON 0x2ea8
+#define USB_DEVICE_ID_SHARKOON_LIGHT2_200 0x2203
+
+#define SHARKOON_ENDPOINT_DATA_IN 0x82
+#define SHARKOON_ENDPOINT_DATA_OUT 0x03
+#define SHARKOON_ENDPOINT_INTERVALL 1
+
+#define SHARKOON_DATA_PACKAGE_SIZE 64 // 64 bytes
+
+
+MODULE_DESCRIPTION("USB Sharkoon Light2 200 device driver");
+MODULE_LICENSE("GPL");
+
+
+/**
+ * device driver data
+ */
+struct sharkoon_light2_200_device
+{
+    unsigned int bufsize; /* URB buffer size */
+
+    struct urb *urbin; /* Input URB */
+    struct urb *urbout; /* Output URB */
+
+    unsigned char *inbuf; /* Input buffer */
+    unsigned char *outbuf; /* Output buffer */
+
+    dma_addr_t inbuf_dma; /* Input buffer dma */
+    dma_addr_t outbuf_dma; /* Output buffer dma */
+};
 
 
 /**
@@ -340,33 +369,8 @@ static struct sharkoon_message_settings sharkoon_create_test_message(void) {
 ///////////////////////////////////////////////////////////////
 
 
-/*
- * Input interrupt completion handler.
- */
-// static void sharkoon_light2_200_irq_in(struct urb *urb)
-// {
-// }
-
-/*
- * Output interrupt completion handler.
- */
-static void sharkoon_light2_200_irq_out(struct urb *urb)
-{
-	switch (urb->status) {
-	case 0:			/* success */
-        printk(KERN_DEBUG "sharkoon_light2_200_irq_out() success \n");
-		break;
-	case -ESHUTDOWN:	/* unplug */
-	case -EILSEQ:		/* protocol error or unplug */
-	case -EPROTO:		/* protocol error or unplug */
-	case -ECONNRESET:	/* unlink */
-	case -ENOENT:
-		break;
-	default:		/* error */
-		hid_warn(urb->dev, "output irq status %d received\n",
-			 urb->status);
-	}
-}
+#define	hid_to_usb_dev(hid_dev) \
+	container_of(hid_dev->dev.parent->parent, struct usb_device, dev)
 
 
 /**
@@ -375,40 +379,25 @@ static void sharkoon_light2_200_irq_out(struct urb *urb)
 static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
     struct hid_device *hid = to_hid_device(dev);
-    struct usb_device *usbdev = interface_to_usbdev(to_usb_interface(dev->parent));
     int r;
+    struct sharkoon_message_settings msg;
 
     struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
     if (!sharkoon_dev)
-        return -ENODATA;
+        return -ENODEV;
 
-    if (!sharkoon_dev->urbout)
+    msg = sharkoon_create_empty_get_message();
+
+    sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &msg, sharkoon_dev->bufsize);
+
+    r = usb_submit_urb(sharkoon_dev->urbout, GFP_ATOMIC); // async submit
+    if (r < 0) 
     {
-        struct sharkoon_message_settings msg = sharkoon_create_test_message();
-
-        sharkoon_dev->urbout = usb_alloc_urb(0, GFP_KERNEL);
-
-        // data
-        sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &msg, 64);
-
-        usb_fill_int_urb(sharkoon_dev->urbout, 
-            usbdev, 
-            usb_sndintpipe(usbdev, sharkoon_dev->endpoint_out->bEndpointAddress),
-            sharkoon_dev->outbuf,
-            64,
-            sharkoon_light2_200_irq_out,
-            hid,
-            sharkoon_dev->endpoint_out->bInterval);
-
-        r = usb_submit_urb(sharkoon_dev->urbout, GFP_ATOMIC); // async submit
-        if (r < 0) 
-        {
-            hid_err(hid, "usb_submit_urb(out) failed: %d\n", r);
-            return r;
-        }
+        hid_err(hid, "usb_submit_urb(out) failed: %d\n", r);
+        return count;
     }
 
-    return 64;
+    return count;
 }
 
 
@@ -424,94 +413,191 @@ static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct de
 static DEVICE_ATTR(test, 0220, NULL, sharkoon_light2_200_attr_test_store);
 
 
+/*
+ * Input interrupt completion handler.
+ */
+static void sharkoon_light2_200_usb_data_in(struct urb *urb)
+{
+    struct hid_device *hid = urb->context;
+    struct sharkoon_light2_200_device *sharkoon_dev = hid_get_drvdata(hid);
+    int	status;
+    unsigned int i;
+
+    switch (urb->status) 
+    {
+	case 0:			/* success */
+        printk(KERN_DEBUG "sharkoon_light2_200_usb_data_in() success \n");
+        printk(KERN_DEBUG "INDATA: ");
+        for(i = 0; i < sharkoon_dev->bufsize; i++) {
+            printk(KERN_CONT "\\%02hhx", sharkoon_dev->inbuf[i]);
+        }
+        printk(KERN_CONT "\n");
+		break;
+	case -EPIPE:		/* stall */
+	case -ECONNRESET:	/* unlink */
+	case -ENOENT:
+	case -ESHUTDOWN:	/* unplug */
+	case -EILSEQ:		/* protocol error or unplug */
+	case -EPROTO:		/* protocol error or unplug */
+	case -ETIME:		/* protocol error or unplug */
+	case -ETIMEDOUT:	/* Should never happen, but... */
+        return;
+	default:		    /* error */
+		hid_warn(urb->dev, "output irq status %d received\n",
+            urb->status);
+	}
+
+	status = usb_submit_urb(urb, GFP_ATOMIC);
+	if (status)
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_usb_data_in() - resubmit failed, status %d\n",
+            status);
+}
+
+/*
+ * Output interrupt completion handler.
+ */
+static void sharkoon_light2_200_usb_data_out(struct urb *urb)
+{
+	switch (urb->status) {
+	case 0:			/* success */
+        printk(KERN_DEBUG "sharkoon_light2_200_usb_data_out() success \n");
+		break;
+	case -ESHUTDOWN:	/* unplug */
+	case -EILSEQ:		/* protocol error or unplug */
+	case -EPROTO:		/* protocol error or unplug */
+	case -ECONNRESET:	/* unlink */
+	case -ENOENT:
+		break;
+	default:		/* error */
+		hid_warn(urb->dev, "output irq status %d received\n",
+			urb->status);
+	}
+}
+
 /**
  * destroy the sharkoon device
  */
 static void sharkoon_light2_200_device_destroy(struct hid_device *hid)
 {
-    struct usb_interface *intf = to_usb_interface(hid->dev.parent);
-    struct usb_device *usbdev = interface_to_usbdev(intf);
+    struct usb_device *usbdev = hid_to_usb_dev(hid);
     struct sharkoon_light2_200_device *sharkoon_dev = hid_get_drvdata(hid);
 
     if (sharkoon_dev)
     {
-        usb_free_urb(sharkoon_dev->urbin);
-        usb_free_urb(sharkoon_dev->urbout);
-        sharkoon_dev->urbin = NULL;
-        sharkoon_dev->urbout = NULL;
+        if (sharkoon_dev->urbin)
+            usb_free_urb(sharkoon_dev->urbin);
+        if (sharkoon_dev->urbout)
+            usb_free_urb(sharkoon_dev->urbout);
+        if (sharkoon_dev->inbuf)
+            usb_free_coherent(usbdev, sharkoon_dev->bufsize, sharkoon_dev->inbuf, sharkoon_dev->inbuf_dma);
+        if (sharkoon_dev->outbuf)
+            usb_free_coherent(usbdev, sharkoon_dev->bufsize, sharkoon_dev->outbuf, sharkoon_dev->outbuf_dma);
 
         kfree(sharkoon_dev);
+
         hid_set_drvdata(hid, NULL);
 
         device_remove_file(&hid->dev, &dev_attr_test);
-
-        usb_free_coherent(usbdev, 64, sharkoon_dev->inbuf, sharkoon_dev->inbuf_dma);
-	    usb_free_coherent(usbdev, 64, sharkoon_dev->outbuf, sharkoon_dev->outbuf_dma);
     }
 }
 
 /**
  * init the sharkoon device
  */
-static int sharkoon_light2_200_device_init(struct hid_device *hid)
+static void sharkoon_light2_200_device_init(struct hid_device *hid)
 {
     struct usb_interface *intf = to_usb_interface(hid->dev.parent);
-    struct usb_device *usbdev = interface_to_usbdev(intf);
-    struct usb_host_interface *host_intf = intf->cur_altsetting;
+    struct usb_device *usbdev = hid_to_usb_dev(hid);
     struct sharkoon_light2_200_device *sharkoon_dev = NULL;
-    unsigned int i;
 
-    if (host_intf->desc.bInterfaceProtocol == 0 &&
-        host_intf->desc.bNumEndpoints == 2)
+    if (intf->cur_altsetting->desc.bInterfaceProtocol != 0 ||
+        intf->cur_altsetting->desc.bNumEndpoints != 2)
+        return;
+
+    sharkoon_dev = kzalloc(sizeof(struct sharkoon_light2_200_device), GFP_KERNEL);
+    if (!sharkoon_dev)
+        return;
+
+    memset(sharkoon_dev, 0, sizeof(struct sharkoon_light2_200_device));
+    sharkoon_dev->bufsize = SHARKOON_DATA_PACKAGE_SIZE;
+
+    sharkoon_dev->outbuf = usb_alloc_coherent(usbdev, sharkoon_dev->bufsize, GFP_KERNEL, &sharkoon_dev->outbuf_dma);
+    if (!sharkoon_dev->outbuf)
     {
-        sharkoon_dev = kzalloc(sizeof(struct sharkoon_light2_200_device), GFP_KERNEL);
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_coherent for outbuf failed.\n");
+        goto error;
+    }
+		
+    sharkoon_dev->inbuf = usb_alloc_coherent(usbdev, sharkoon_dev->bufsize, GFP_KERNEL, &sharkoon_dev->inbuf_dma);
+    if (!sharkoon_dev->inbuf)
+    {
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_coherent for inbuf failed.\n");
+        goto error;
+    }
 
-        if (!sharkoon_dev)
-            return -ENOMEM;
+    sharkoon_dev->urbout = usb_alloc_urb(0, GFP_KERNEL);
+    if (!sharkoon_dev->urbout)
+    {
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_urb for urbout failed.\n");
+        goto error;
+    }
 
-        sharkoon_dev->endpoint_in = NULL;
-        sharkoon_dev->endpoint_out = NULL;
+    sharkoon_dev->urbin = usb_alloc_urb(0, GFP_KERNEL);
+    if (!sharkoon_dev->urbin)
+    {
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_urb for urbin failed.\n");
+        goto error;
+    }
 
-        // find the endpoints for in an out direction
-        for (i = 0; i < host_intf->desc.bNumEndpoints; i++)
-        {
-            // endpoint must have 'interrupt' type
-            if (usb_endpoint_xfer_int(&host_intf->endpoint[i].desc))
-            {
-                if (usb_endpoint_dir_in(&host_intf->endpoint[i].desc))
-                    sharkoon_dev->endpoint_in = &host_intf->endpoint[i].desc;
-                else
-                    sharkoon_dev->endpoint_out = &host_intf->endpoint[i].desc;
-            }
-        }
+    usb_fill_int_urb(sharkoon_dev->urbout, 
+        usbdev, 
+        usb_sndintpipe(usbdev, SHARKOON_ENDPOINT_DATA_OUT),
+        sharkoon_dev->outbuf,
+        sharkoon_dev->bufsize,
+        sharkoon_light2_200_usb_data_out,
+        hid,
+        SHARKOON_ENDPOINT_INTERVALL);
 
-        if (sharkoon_dev->endpoint_in && sharkoon_dev->endpoint_out)
-        {
-            hid_set_drvdata(hid, sharkoon_dev);
-            device_create_file(&hid->dev, &dev_attr_test);
-
-            sharkoon_dev->inbuf = usb_alloc_coherent(usbdev, 64, GFP_KERNEL, &sharkoon_dev->inbuf_dma);
-	        sharkoon_dev->outbuf = usb_alloc_coherent(usbdev, 64, GFP_KERNEL, &sharkoon_dev->outbuf_dma);
-        }
-        else
-        {
-            kfree(sharkoon_dev);
-            sharkoon_dev = NULL;
-        }
-	}
-
-	return 0;
-}
+    sharkoon_dev->urbout->transfer_dma = sharkoon_dev->outbuf_dma;
+	sharkoon_dev->urbout->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
+    
+    usb_fill_int_urb(sharkoon_dev->urbin, 
+        usbdev, 
+        usb_rcvintpipe(usbdev, SHARKOON_ENDPOINT_DATA_IN),
+        sharkoon_dev->inbuf,
+        sharkoon_dev->bufsize,
+        sharkoon_light2_200_usb_data_in,
+        hid,
+        SHARKOON_ENDPOINT_INTERVALL);
 
 
+    sharkoon_dev->urbin->transfer_dma = sharkoon_dev->inbuf_dma;    
+	sharkoon_dev->urbin->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
 
-/**
- * if report in report_table, this hook is called (NULL means nop)
- */
-static int sharkoon_light2_200_raw_event(struct hid_device *hid, struct hid_report *report, u8 *data, int size)
-{
-    // todo
-    return 0;
+    hid_set_drvdata(hid, sharkoon_dev);
+
+    if (usb_submit_urb(sharkoon_dev->urbin, GFP_KERNEL))
+    {
+        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_submit_urb for urbin failed.\n");
+        goto error;
+    }
+
+    device_create_file(&hid->dev, &dev_attr_test);
+
+	return;
+
+error:
+    if (sharkoon_dev->urbin)
+        usb_free_urb(sharkoon_dev->urbin);
+    if (sharkoon_dev->urbout)
+        usb_free_urb(sharkoon_dev->urbout);
+    if (sharkoon_dev->inbuf)
+        usb_free_coherent(usbdev, sharkoon_dev->bufsize, sharkoon_dev->inbuf, sharkoon_dev->inbuf_dma);
+    if (sharkoon_dev->outbuf)
+        usb_free_coherent(usbdev, sharkoon_dev->bufsize, sharkoon_dev->outbuf, sharkoon_dev->outbuf_dma);
+
+    hid_set_drvdata(hid, NULL);
+    kfree(sharkoon_dev);
 }
 
 
@@ -526,29 +612,19 @@ static int sharkoon_light2_200_probe(struct hid_device *hid, const struct hid_de
 	if (retval)
     {
 		hid_err(hid, "parse failed\n");
-		goto exit;
+		return retval;
 	}
 
 	retval = hid_hw_start(hid, HID_CONNECT_DEFAULT);
 	if (retval)
     {
 		hid_err(hid, "hw start failed\n");
-		goto exit;
+		return retval;
 	}
 
-	retval = sharkoon_light2_200_device_init(hid);
-	if (retval)
-    {
-		hid_err(hid, "couldn't install mouse\n");
-		goto exit_stop;
-	}
+    sharkoon_light2_200_device_init(hid);
 
 	return 0;
-
-exit_stop:
-	hid_hw_stop(hid);
-exit:
-	return retval;
 }
 
 /**
@@ -578,12 +654,7 @@ static struct hid_driver sharkoon_light2_200_driver = {
     .name      = "sharkoon-light2-200",
     .id_table  = sharkoon_light2_200_devices,
     .probe     = sharkoon_light2_200_probe,
-    .remove    = sharkoon_light2_200_remove,
-    .raw_event = sharkoon_light2_200_raw_event,
+    .remove    = sharkoon_light2_200_remove
 };
 
 module_hid_driver(sharkoon_light2_200_driver);
-
-
-MODULE_DESCRIPTION("USB Sharkoon Light2 200 device driver");
-MODULE_LICENSE("GPL v2");
