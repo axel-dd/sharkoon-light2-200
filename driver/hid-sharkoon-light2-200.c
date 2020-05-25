@@ -377,38 +377,34 @@ static struct sharkoon_message_settings sharkoon_create_test_message(void) {
 /**
  * Read device file "test"
  */
-// static ssize_t sharkoon_light2_200_attr_test_show(struct device *dev, struct device_attribute *attr, char *buf)
-// {
-//     /*const unsigned char *data = NULL;
-//     struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
-//     if (!sharkoon_dev)
-//         return -ENODEV;
+static ssize_t sharkoon_light2_200_attr_test_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    const unsigned char *data = NULL;
+    struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
+    if (!sharkoon_dev)
+        return -ENODEV;
 
-//     data = sharkoon_dev->inbuf;
+    data = sharkoon_dev->inbuf;
 
-//     return scnprintf(buf, PAGE_SIZE,
-// "0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
-// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx\n",
-// data[0],  data[1],  data[2],  data[3],  data[4],  data[5],  data[6],  data[7],
-// data[8],  data[9],  data[10], data[11], data[12], data[13], data[14], data[15],
-// data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
-// data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31],
-// data[32], data[33], data[34], data[35], data[36], data[37], data[38], data[39],
-// data[40], data[41], data[42], data[43], data[44], data[45], data[46], data[47],
-// data[48], data[49], data[50], data[51], data[52], data[53], data[54], data[55],
-// data[56], data[57], data[58], data[59], data[60], data[61], data[62], data[63]); 
-// */
+    return scnprintf(buf, PAGE_SIZE,
+"0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx\n",
+data[0],  data[1],  data[2],  data[3],  data[4],  data[5],  data[6],  data[7],
+data[8],  data[9],  data[10], data[11], data[12], data[13], data[14], data[15],
+data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
+data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31],
+data[32], data[33], data[34], data[35], data[36], data[37], data[38], data[39],
+data[40], data[41], data[42], data[43], data[44], data[45], data[46], data[47],
+data[48], data[49], data[50], data[51], data[52], data[53], data[54], data[55],
+data[56], data[57], data[58], data[59], data[60], data[61], data[62], data[63]);
 
-//     dev_info(dev, "%s passed\n", __func__);
-
-//     return scnprintf(buf, PAGE_SIZE, "%s\n", "Sharkoon Light2 200 device");
-// }
+}
 
 /**
  * Write device file "test"
@@ -416,17 +412,22 @@ static struct sharkoon_message_settings sharkoon_create_test_message(void) {
 static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
     int status;
-    struct sharkoon_message_settings msg;
+    //struct sharkoon_message_settings msg;
 
     struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
     if (!sharkoon_dev)
         return -ENODEV;
 
-    dev_info(dev, "%s passed\n", __func__);
+    if (count > SHARKOON_DATA_PACKAGE_SIZE)
+        return -EIO;
 
-    msg = sharkoon_create_empty_get_message();
+    memset_io(sharkoon_dev->outbuf, 0, sharkoon_dev->bufsize);
+    memcpy_toio(sharkoon_dev->outbuf, (const unsigned char*)buf, count);
 
-    sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &msg, sharkoon_dev->bufsize);
+    // dev_info(dev, "%s - count = %ld\n", __func__ , count);
+
+    //msg = sharkoon_create_empty_get_message();
+    //memcpy(sharkoon_dev->outbuf, &msg, sharkoon_dev->bufsize);
 
     status = usb_submit_urb(sharkoon_dev->urbout, GFP_ATOMIC); // async submit
     if (status < 0) 
@@ -434,8 +435,6 @@ static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct de
         dev_err(dev, "ERROR in %s - submit urbout failed, status %d\n", __func__ , status);
         return count;
     }
-
-    dev_info(dev, "%s success\n", __func__);
 
     return count;
 }
@@ -447,10 +446,10 @@ static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct de
  *
  * Read-only is  0444
  * Write-only is 0220
- * Read/write is 0664
+ * Read/write is 0644
  */
 
-static DEVICE_ATTR(test, 0220, NULL, sharkoon_light2_200_attr_test_store);
+static DEVICE_ATTR(test, 0644, sharkoon_light2_200_attr_test_show, sharkoon_light2_200_attr_test_store);
 
 
 /*
@@ -466,7 +465,7 @@ static void sharkoon_light2_200_usb_data_in(struct urb *urb)
     switch (urb->status) 
     {
 	case 0:			/* success */
-        //hid_info(urb->dev, "%s success\n", __func__);
+        hid_info(urb->dev, "%s success\n", __func__);
         // printk(KERN_DEBUG "INDATA: ");
         // for(i = 0; i < sharkoon_dev->bufsize; i++) {
         //     printk(KERN_CONT "\\%02hhx", sharkoon_dev->inbuf[i]);
@@ -499,7 +498,7 @@ static void sharkoon_light2_200_usb_data_out(struct urb *urb)
 	switch (urb->status)
     {
 	case 0:			/* success */
-        //hid_info(urb->dev, "%s success\n", __func__);
+        hid_info(urb->dev, "%s success\n", __func__);
 		break;
 	case -ESHUTDOWN:	/* unplug */
 	case -EILSEQ:		/* protocol error or unplug */
