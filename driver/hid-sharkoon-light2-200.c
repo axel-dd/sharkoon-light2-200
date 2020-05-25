@@ -373,29 +373,69 @@ static struct sharkoon_message_settings sharkoon_create_test_message(void) {
 	container_of(hid_dev->dev.parent->parent, struct usb_device, dev)
 
 
+
+/**
+ * Read device file "test"
+ */
+// static ssize_t sharkoon_light2_200_attr_test_show(struct device *dev, struct device_attribute *attr, char *buf)
+// {
+//     /*const unsigned char *data = NULL;
+//     struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
+//     if (!sharkoon_dev)
+//         return -ENODEV;
+
+//     data = sharkoon_dev->inbuf;
+
+//     return scnprintf(buf, PAGE_SIZE,
+// "0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx,\n\
+// 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx, 0x%02hhx\n",
+// data[0],  data[1],  data[2],  data[3],  data[4],  data[5],  data[6],  data[7],
+// data[8],  data[9],  data[10], data[11], data[12], data[13], data[14], data[15],
+// data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
+// data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31],
+// data[32], data[33], data[34], data[35], data[36], data[37], data[38], data[39],
+// data[40], data[41], data[42], data[43], data[44], data[45], data[46], data[47],
+// data[48], data[49], data[50], data[51], data[52], data[53], data[54], data[55],
+// data[56], data[57], data[58], data[59], data[60], data[61], data[62], data[63]); 
+// */
+
+//     dev_info(dev, "%s passed\n", __func__);
+
+//     return scnprintf(buf, PAGE_SIZE, "%s\n", "Sharkoon Light2 200 device");
+// }
+
 /**
  * Write device file "test"
  */
 static ssize_t sharkoon_light2_200_attr_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    struct hid_device *hid = to_hid_device(dev);
-    int r;
+    int status;
     struct sharkoon_message_settings msg;
 
     struct sharkoon_light2_200_device *sharkoon_dev = dev_get_drvdata(dev);
     if (!sharkoon_dev)
         return -ENODEV;
 
+    dev_info(dev, "%s passed\n", __func__);
+
     msg = sharkoon_create_empty_get_message();
 
     sharkoon_dev->outbuf = memcpy(sharkoon_dev->outbuf, &msg, sharkoon_dev->bufsize);
 
-    r = usb_submit_urb(sharkoon_dev->urbout, GFP_ATOMIC); // async submit
-    if (r < 0) 
+    status = usb_submit_urb(sharkoon_dev->urbout, GFP_ATOMIC); // async submit
+    if (status < 0) 
     {
-        hid_err(hid, "usb_submit_urb(out) failed: %d\n", r);
+        dev_err(dev, "ERROR in %s - submit urbout failed, status %d\n", __func__ , status);
         return count;
     }
+
+    dev_info(dev, "%s success\n", __func__);
 
     return count;
 }
@@ -418,20 +458,20 @@ static DEVICE_ATTR(test, 0220, NULL, sharkoon_light2_200_attr_test_store);
  */
 static void sharkoon_light2_200_usb_data_in(struct urb *urb)
 {
-    struct hid_device *hid = urb->context;
-    struct sharkoon_light2_200_device *sharkoon_dev = hid_get_drvdata(hid);
+    //struct hid_device *hid = urb->context;
+    //struct sharkoon_light2_200_device *sharkoon_dev = hid_get_drvdata(hid);
     int	status;
-    unsigned int i;
+    //unsigned int i;
 
     switch (urb->status) 
     {
 	case 0:			/* success */
-        printk(KERN_DEBUG "sharkoon_light2_200_usb_data_in() success \n");
-        printk(KERN_DEBUG "INDATA: ");
-        for(i = 0; i < sharkoon_dev->bufsize; i++) {
-            printk(KERN_CONT "\\%02hhx", sharkoon_dev->inbuf[i]);
-        }
-        printk(KERN_CONT "\n");
+        //hid_info(urb->dev, "%s success\n", __func__);
+        // printk(KERN_DEBUG "INDATA: ");
+        // for(i = 0; i < sharkoon_dev->bufsize; i++) {
+        //     printk(KERN_CONT "\\%02hhx", sharkoon_dev->inbuf[i]);
+        // }
+        // printk(KERN_CONT "\n");
 		break;
 	case -EPIPE:		/* stall */
 	case -ECONNRESET:	/* unlink */
@@ -443,14 +483,12 @@ static void sharkoon_light2_200_usb_data_in(struct urb *urb)
 	case -ETIMEDOUT:	/* Should never happen, but... */
         return;
 	default:		    /* error */
-		hid_warn(urb->dev, "output irq status %d received\n",
-            urb->status);
+		hid_warn(urb->dev, "urbin status %d received\n", urb->status);
 	}
 
 	status = usb_submit_urb(urb, GFP_ATOMIC);
-	if (status)
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_usb_data_in() - resubmit failed, status %d\n",
-            status);
+	if (status < 0)
+        hid_err(urb->dev, "ERROR in %s - resubmit urbin failed, status %d\n", __func__ , status);
 }
 
 /*
@@ -458,9 +496,10 @@ static void sharkoon_light2_200_usb_data_in(struct urb *urb)
  */
 static void sharkoon_light2_200_usb_data_out(struct urb *urb)
 {
-	switch (urb->status) {
+	switch (urb->status)
+    {
 	case 0:			/* success */
-        printk(KERN_DEBUG "sharkoon_light2_200_usb_data_out() success \n");
+        //hid_info(urb->dev, "%s success\n", __func__);
 		break;
 	case -ESHUTDOWN:	/* unplug */
 	case -EILSEQ:		/* protocol error or unplug */
@@ -469,8 +508,7 @@ static void sharkoon_light2_200_usb_data_out(struct urb *urb)
 	case -ENOENT:
 		break;
 	default:		/* error */
-		hid_warn(urb->dev, "output irq status %d received\n",
-			urb->status);
+		hid_warn(urb->dev, "urbout status %d received\n", urb->status);
 	}
 }
 
@@ -509,6 +547,7 @@ static void sharkoon_light2_200_device_init(struct hid_device *hid)
     struct usb_interface *intf = to_usb_interface(hid->dev.parent);
     struct usb_device *usbdev = hid_to_usb_dev(hid);
     struct sharkoon_light2_200_device *sharkoon_dev = NULL;
+    int status;
 
     if (intf->cur_altsetting->desc.bInterfaceProtocol != 0 ||
         intf->cur_altsetting->desc.bNumEndpoints != 2)
@@ -524,28 +563,28 @@ static void sharkoon_light2_200_device_init(struct hid_device *hid)
     sharkoon_dev->outbuf = usb_alloc_coherent(usbdev, sharkoon_dev->bufsize, GFP_KERNEL, &sharkoon_dev->outbuf_dma);
     if (!sharkoon_dev->outbuf)
     {
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_coherent for outbuf failed.\n");
+        hid_err(hid, "ERROR in %s - alloc outbuf failed.\n", __func__);
         goto error;
     }
 		
     sharkoon_dev->inbuf = usb_alloc_coherent(usbdev, sharkoon_dev->bufsize, GFP_KERNEL, &sharkoon_dev->inbuf_dma);
     if (!sharkoon_dev->inbuf)
     {
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_coherent for inbuf failed.\n");
+        hid_err(hid, "ERROR in %s - alloc inbuf failed.\n", __func__);
         goto error;
     }
 
     sharkoon_dev->urbout = usb_alloc_urb(0, GFP_KERNEL);
     if (!sharkoon_dev->urbout)
     {
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_urb for urbout failed.\n");
+        hid_err(hid, "ERROR in %s - alloc urbout failed.\n", __func__);
         goto error;
     }
 
     sharkoon_dev->urbin = usb_alloc_urb(0, GFP_KERNEL);
     if (!sharkoon_dev->urbin)
     {
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_alloc_urb for urbin failed.\n");
+        hid_err(hid, "ERROR in %s - alloc urbin failed.\n", __func__);
         goto error;
     }
 
@@ -576,9 +615,10 @@ static void sharkoon_light2_200_device_init(struct hid_device *hid)
 
     hid_set_drvdata(hid, sharkoon_dev);
 
-    if (usb_submit_urb(sharkoon_dev->urbin, GFP_KERNEL))
+    status = usb_submit_urb(sharkoon_dev->urbin, GFP_KERNEL);
+    if (status < 0)
     {
-        printk(KERN_ERR "ERROR in sharkoon_light2_200_device_init() - usb_submit_urb for urbin failed.\n");
+        hid_err(hid, "ERROR in %s - submit urbin failed, status %d\n", __func__, status);
         goto error;
     }
 
