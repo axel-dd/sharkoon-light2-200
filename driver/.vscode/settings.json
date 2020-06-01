@@ -1,4 +1,20 @@
 {
+    "files.exclude": {
+        "**/.*.*.cmd": true,
+        "**/.*.d": true,
+        "**/.*.S": true,
+        "**/*.ko": true,
+        "**/*.mod*": true,
+        "**/*.o": true,
+        "**/Module.symvers": true,
+        "**/modules.order": true
+    },
+    "[c]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 8,
+        "editor.insertSpaces": false,
+        "editor.rulers": [80]
+    },
     "files.associations": {
         "array": "c",
         "string": "c",
