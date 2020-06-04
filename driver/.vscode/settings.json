@@ -11,7 +11,7 @@
     },
     "[c]": {
         "editor.detectIndentation": false,
-        "editor.tabSize": 8,
+        "editor.tabSize": 4,
         "editor.insertSpaces": false,
         "editor.rulers": [80]
     },

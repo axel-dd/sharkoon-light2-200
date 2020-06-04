@@ -14,6 +14,7 @@ uninstall:
 	@rm -v /lib/modules/$(shell uname -r)/kernel/drivers/hid/hid-sharkoon-light2-200.ko
 
 insmod:
+	@rmmod hid-sharkoon-light2-200 || true
 	@insmod hid-sharkoon-light2-200.ko
 
 rmmod:
