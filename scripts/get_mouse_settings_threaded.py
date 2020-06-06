@@ -5,7 +5,6 @@
 ##
 
 import usb.core
-import usb.util
 import binascii
 import threading
 import time
