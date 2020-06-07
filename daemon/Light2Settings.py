@@ -25,19 +25,24 @@ class Dpi:
 		self.y = y
 
 	def __eq__(self,other):
-           if not isinstance(other, Dpi):
-                return NotImplemented
-           else:
-                #string lists of all method names and properties of each of these objects
-                prop_names_self = list(self.__dict__)
-                prop_names_other = list(other.__dict__)
+		"""Comparison with other object on the basis of their attributes
 
-                n = len(prop_names_self) #number of properties
-                for i in range(n):
-                     if getattr(self,prop_names_self[i]) != getattr(other,prop_names_other[i]):
-                          return False
+		Args:
+			other (Dpi): other DPI object
 
-                return True
+		Returns:
+			bool: true if all attribute values are equal
+		"""
+		if not isinstance(other, Dpi):
+			return NotImplemented
+		else:
+			for attr1, attr2 in zip(self.__dict__, other.__dict__):
+				if attr1 != attr2:
+					return False
+				if getattr(self, attr1) != getattr(other, attr2):
+					return False
+			
+			return True
 
 	def toBytes(self) -> bytes:
 		"""Creates DPI values in 3 bytes structure
@@ -120,19 +125,24 @@ class DpiSettings:
 		self.dpi7_value = Dpi(16000, 16000)
 
 	def __eq__(self,other):
-           if not isinstance(other, DpiSettings):
-                return NotImplemented
-           else:
-                #string lists of all method names and properties of each of these objects
-                prop_names_self = list(self.__dict__)
-                prop_names_other = list(other.__dict__)
+		"""Comparison with other object on the basis of their attributes
 
-                n = len(prop_names_self) #number of properties
-                for i in range(n):
-                     if getattr(self,prop_names_self[i]) != getattr(other,prop_names_other[i]):
-                          return False
+		Args:
+			other (DpiSettings): other DpiSettings object
 
-                return True
+		Returns:
+			bool: true if all attribute values are equal
+		"""
+		if not isinstance(other, DpiSettings):
+			return NotImplemented
+		else:
+			for attr1, attr2 in zip(self.__dict__, other.__dict__):
+				if attr1 != attr2:
+					return False
+				if getattr(self, attr1) != getattr(other, attr2):
+					return False
+			
+			return True
 
 	def toBytes(self) -> bytes:
 		"""Creates DpiSettings in 22 bytes structure
