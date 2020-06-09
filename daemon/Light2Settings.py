@@ -45,7 +45,7 @@ class Dpi:
 			return True
 
 	def toBytes(self) -> bytes:
-		"""Creates DPI values in 3 bytes structure
+		"""Converts the DPI object to 3 bytes structure
 
 		Returns:
 			bytes: DPI values in 3 bytes structure
@@ -145,7 +145,7 @@ class DpiSettings:
 			return True
 
 	def toBytes(self) -> bytes:
-		"""Creates DpiSettings in 22 bytes structure
+		"""Converts the DpiSettings object to 22 bytes structure
 
 		byte 1 => state of the seven DPI steps decode in bits
 		sample - bit mask if all steps are enabled
@@ -223,3 +223,96 @@ class DpiSettings:
 		ds.dpi7_value = Dpi.fromBytes(b[19:22])
 
 		return ds;
+
+class IlluminationSettings:
+	def __init__(self):
+	  self.led_effect = 0
+	  self.led_frequency = 1
+	  self.led_brightness = 10
+	  self.unknownByte41 = 1
+	  self.profile_id = 0
+	  self.color1 = (0,0,0)
+	  self.color2 = (0,0,0)
+	  self.color3 = (0,0,0)
+	  self.color4 = (0,0,0)
+	  self.color5 = (0,0,0)
+	  self.color6 = (0,0,0)
+	  self.color7 = (0,0,0)
+
+	def __eq__(self,other):
+		"""Comparison with other object on the basis of their attributes
+
+		Args:
+			other (DpiSettings): other DpiSettings object
+
+		Returns:
+			bool: true if all attribute values are equal
+		"""
+		if not isinstance(other, IlluminationSettings):
+			return NotImplemented
+		else:
+			for attr1, attr2 in zip(self.__dict__, other.__dict__):
+				if attr1 != attr2:
+					return False
+				if getattr(self, attr1) != getattr(other, attr2):
+					return False
+			
+			return True
+
+	def toBytes(self) -> bytes:
+		"""Converts the IlluminationSettings object to 26 bytes structure
+
+		byte 1 => state of the seven DPI steps decode in bits
+		sample - bit mask if all steps are enabled
+		 0    1     1     1     1     1     1     1
+		 -   DPI7  DPI6  DPI5  DPI4  DPI3  DPI2  DPI1
+
+		bytes 2-22 => DPI values for each step
+
+		Returns:
+			bytes: DpiSettings in 22 bytes structure
+		"""
+		b = bytes([self.led_effect,
+				   self.led_frequency,
+				   self.led_brightness,
+				   self.unknownByte41,
+				   self.profile_id])
+		b += bytes([self.color1[0], self.color1[1], self.color1[2]])
+		b += bytes([self.color2[0], self.color2[1], self.color2[2]])
+		b += bytes([self.color3[0], self.color3[1], self.color3[2]])
+		b += bytes([self.color4[0], self.color4[1], self.color4[2]])
+		b += bytes([self.color5[0], self.color5[1], self.color5[2]])
+		b += bytes([self.color6[0], self.color6[1], self.color6[2]])
+		b += bytes([self.color7[0], self.color7[1], self.color7[2]])
+
+		return b
+
+	@classmethod
+	def fromBytes(self, b: bytes):
+		"""Creates an IlluminationSettings object from 26 bytes
+
+		Args:
+			b (bytes): illumination settings in 26 bytes
+
+		Returns:
+			IlluminationSettings: IlluminationSettings object
+		"""
+
+		if len(b) != 26:
+			raise Light2Error('Wrong byte size, 26 bytes are expected.')
+
+		ils = IlluminationSettings()
+		ils.led_effect = b[0]
+		ils.led_frequency = b[1]
+		ils.led_brightness = b[2]
+		ils.unknownByte41 = b[3]
+		ils.profile_id = b[4]
+		ils.color1 = (b[5], b[6], b[7])
+		ils.color2 = (b[8], b[9], b[10])
+		ils.color3 = (b[11], b[12], b[13])
+		ils.color4 = (b[14], b[15], b[16])
+		ils.color5 = (b[17], b[18], b[19])
+		ils.color6 = (b[20], b[21], b[22])
+		ils.color7 = (b[23], b[24], b[25])
+
+		return ils

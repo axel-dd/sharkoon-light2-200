@@ -29,6 +29,13 @@ def TestDpiSettingsConversation():
     if s != Light2Settings.DpiSettings():
         raise Exception()
 
+def TestIlluminationSettingsConversation():
+    # compare with default byte data
+    b = binascii.unhexlify('00010a0100000000000000000000000000000000000000000000')
+    s = Light2Settings.IlluminationSettings.fromBytes(b)
+    if s != Light2Settings.IlluminationSettings():
+        raise Exception()
+
 
 TestDpiConversation(bytes([0x11, 0x40, 0x40]), 16000, 16000)
 TestDpiConversation(bytes([0x00, 0x10, 0x10]), 800, 800)
@@ -44,3 +51,4 @@ TestWithInvalidValues(50, 16050)
 
 TestDpiSettingsByteSize()
 TestDpiSettingsConversation()
+TestIlluminationSettingsConversation()
