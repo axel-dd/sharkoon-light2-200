@@ -3,7 +3,7 @@
 The mouse sends/receives messages over the second usb interface.
 For more details, see [usb device details](#usb-device-details)
 
-The size of a in/out messages is 64 bytes
+The size of in/out messages are 64 bytes
 
 ## Message Protocol
 
@@ -25,7 +25,7 @@ The size of a in/out messages is 64 bytes
 | 1 | Version number | 0x04 |
 | 2-3 | Message type? | 0xa001 |
 | 4 | Get settings command | 0x01 |
-| 5-7 | Unknown | 0x0102a501 |
+| 5-7 | Unknown | 0x0102a5 |
 | 8 | DPI step number of the device | 0x00 - 0x06 |
 | 9 | [ON/OFF state of DPI steps](#DPI-steps-encoding) | e.g. 0x7f |
 | 10-12 | [DPI1 settings](#DPI-values-encoding) | e.g. 0x000808 |
@@ -61,7 +61,7 @@ The size of a in/out messages is 64 bytes
 | 1 | Version number | 0x04 |
 | 2-3 | Message type? | 0xa001 |
 | 4 | Set settings command | 0x02 |
-| 5-7 | Unknown | 0x0102a501 |
+| 5-7 | Unknown | 0x0102a5 |
 | 8 | DPI step number of the device | 0x00 - 0x06 |
 | 9 | [ON/OFF state of DPI steps](#DPI-steps-encoding) | e.g. 0x7f |
 | 10-12 | [DPI1 settings](#DPI-values-encoding) | e.g. 0x000808 |
