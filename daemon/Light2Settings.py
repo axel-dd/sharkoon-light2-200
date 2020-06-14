@@ -1,7 +1,11 @@
+from enum import IntEnum
+
 class Light2Error(Exception):
 	pass
 
 class Dpi:
+	BYTE_SIZE = 3
+	
 	"""DPI values for x-axis and y-axis is stored in steps of 50. The regular value must be divided by 50.
 	   The Sharkoon Light2 200 mouse supports regular values between 50 and 16000.
 	"""
@@ -45,10 +49,10 @@ class Dpi:
 			return True
 
 	def toBytes(self) -> bytes:
-		"""Converts the DPI object to 3 bytes structure
+		"""Converts the DPI object to Dpi.BYTE_SIZE bytes structure
 
 		Returns:
-			bytes: DPI values in 3 bytes structure
+			bytes: DPI values in Dpi.BYTE_SIZE bytes structure
 		"""
 		x = int(self.x / 50)
 		y = int(self.y / 50)
@@ -71,23 +75,15 @@ class Dpi:
 	def fromBytes(self, b: bytes):
 		"""Creates an DPI object from bytes
 
-		DPI for x- and y axis is stored in steps of 50. The regular value must be divided by 50.
-		The device supports regular values between 50 and 16000.
-		As x and y are limited to one byte, the rest is stored in an offset byte.
-		The first 4 bits are for x and the last 4 for y.
-		Sample
-		0x0 0x1 0xf0 0x2c  | x = 240  Ofx = 0 | ((Ofx * 256) + y) * 50 => 12000 DPI 
-		Ofx Ofy  x    y    | y = 44   Ofy = 1 | ((Ofy * 256) + x) * 50 => 15000 DPI
-
 		Args:
-			b (bytes): DPI values in 3 bytes
+			b (bytes): DPI values in Dpi.BYTE_SIZE bytes
 
 		Returns:
 			Dpi: DPI object in human readable units
 		"""
 	
-		if len(b) != 3:
-			raise Light2Error('Wrong byte size, 3 bytes are expected.')
+		if len(b) != Dpi.BYTE_SIZE:
+			raise Light2Error(f'Wrong byte size, {Dpi.BYTE_SIZE} bytes are expected.')
 
 		#           [0x1] 0x0
     	# 0x0 [0x1]  0x0  0x0
@@ -105,9 +101,13 @@ class Dpi:
 
 
 class DpiSettings:
+	BYTE_SIZE = 23
+
 	def __init__(self):
 		"""Creates a DpiSettings object
 		"""
+		self.currentDpiStep = 1
+
 		self.dpi1_on = True
 		self.dpi2_on = True
 		self.dpi3_on = True
@@ -145,17 +145,10 @@ class DpiSettings:
 			return True
 
 	def toBytes(self) -> bytes:
-		"""Converts the DpiSettings object to 22 bytes structure
-
-		byte 1 => state of the seven DPI steps decode in bits
-		sample - bit mask if all steps are enabled
-		 0    1     1     1     1     1     1     1
-		 -   DPI7  DPI6  DPI5  DPI4  DPI3  DPI2  DPI1
-
-		bytes 2-22 => DPI values for each step
+		"""Converts the DpiSettings object to DpiSettings.BYTE_SIZE bytes structure
 
 		Returns:
-			bytes: DpiSettings in 22 bytes structure
+			bytes: DpiSettings in DpiSettings.BYTE_SIZE bytes structure
 		"""
 		steps = 0
 		if self.dpi1_on:
@@ -173,7 +166,8 @@ class DpiSettings:
 		if self.dpi7_on:
 			steps |= 1 << 6
 
-		b = bytes([steps])
+		b = bytes([self.currentDpiStep])
+		b += bytes([steps])
 		b += self.dpi1_value.toBytes()
 		b += self.dpi2_value.toBytes()
 		b += self.dpi3_value.toBytes()
@@ -186,58 +180,76 @@ class DpiSettings:
 
 	@classmethod
 	def fromBytes(self, b: bytes):
-		"""Creates an DpiSettings object from 22 bytes
-
-		byte 1 => state of the seven DPI steps decode in bits
-		sample - bit mask if all steps are enabled
-		 0    1     1     1     1     1     1     1
-		 -   DPI7  DPI6  DPI5  DPI4  DPI3  DPI2  DPI1
-
-		bytes 2-22 => DPI values for each step
+		"""Creates an DpiSettings object from DpiSettings.BYTE_SIZE bytes
 
 		Args:
-			b (bytes): dpi settings in 22 bytes
+			b (bytes): dpi settings in DpiSettings.BYTE_SIZE bytes
 
 		Returns:
 			DpiSettings: DpiSettings object
 		"""
 
-		if len(b) != 22:
-			raise Light2Error('Wrong byte size, 22 bytes are expected.')
+		if len(b) != DpiSettings.BYTE_SIZE:
+			raise Light2Error(f'Wrong byte size, {DpiSettings.BYTE_SIZE} bytes are expected.')
 
 		ds = DpiSettings()
-		ds.dpi1_on = bool(b[0] & 1)
-		ds.dpi2_on = bool((b[0] >> 1) & 1)
-		ds.dpi3_on = bool((b[0] >> 2) & 1)
-		ds.dpi4_on = bool((b[0] >> 3) & 1)
-		ds.dpi5_on = bool((b[0] >> 4) & 1)
-		ds.dpi6_on = bool((b[0] >> 5) & 1)
-		ds.dpi7_on = bool((b[0] >> 6) & 1)
+		ds.currentDpiStep = b[0]
 
-		ds.dpi1_value = Dpi.fromBytes(b[1:4])
-		ds.dpi2_value = Dpi.fromBytes(b[4:7])
-		ds.dpi3_value = Dpi.fromBytes(b[7:10])
-		ds.dpi4_value = Dpi.fromBytes(b[10:13])
-		ds.dpi5_value = Dpi.fromBytes(b[13:16])
-		ds.dpi6_value = Dpi.fromBytes(b[16:19])
-		ds.dpi7_value = Dpi.fromBytes(b[19:22])
+		ds.dpi1_on = bool(b[1] & 1)
+		ds.dpi2_on = bool((b[1] >> 1) & 1)
+		ds.dpi3_on = bool((b[1] >> 2) & 1)
+		ds.dpi4_on = bool((b[1] >> 3) & 1)
+		ds.dpi5_on = bool((b[1] >> 4) & 1)
+		ds.dpi6_on = bool((b[1] >> 5) & 1)
+		ds.dpi7_on = bool((b[1] >> 6) & 1)
+
+		ds.dpi1_value = Dpi.fromBytes(b[2:5])
+		ds.dpi2_value = Dpi.fromBytes(b[5:8])
+		ds.dpi3_value = Dpi.fromBytes(b[8:11])
+		ds.dpi4_value = Dpi.fromBytes(b[11:14])
+		ds.dpi5_value = Dpi.fromBytes(b[14:17])
+		ds.dpi6_value = Dpi.fromBytes(b[17:20])
+		ds.dpi7_value = Dpi.fromBytes(b[20:23])
 
 		return ds
 
-class IlluminationSettings:
+class LedEffect(IntEnum):
+	PULSATING_RGB_CYCLE = 0
+	PULSATING = 1
+	PERMANENT = 2
+	COLOR_CHANGE = 3
+	SINGLE_COLOR_MARQUEE = 4
+	MULTI_COLOR_MARQUEE = 5
+	RIPPLE_EFFECT = 6
+	TRIGGER = 7
+	HEARTBEAT = 8
+	LED_OFF = 9
+
+class SettingsMessage:
+	BYTE_SIZE = 64
+
 	def __init__(self):
-	  self.led_effect = 0
-	  self.led_frequency = 1
-	  self.led_brightness = 10
-	  self.unknownByte41 = 1
-	  self.profile_id = 0
-	  self.color1 = (0,0,0)
-	  self.color2 = (0,0,0)
-	  self.color3 = (0,0,0)
-	  self.color4 = (0,0,0)
-	  self.color5 = (0,0,0)
-	  self.color6 = (0,0,0)
-	  self.color7 = (0,0,0)
+		self.version = b'\x04' # byte 1
+		self.message_type = b'\xa0\x01' # byte 2-3
+		self.settings_command = b'\x02' # byte 4
+		self.bytes5_7 = b'\x01\x02\xa5' # byte 5-7
+		self.dpi_settings = DpiSettings() # byte 8-30
+		self.bytes31_33 = b'\x00\x00\x00' # byte 31-33
+		self.lift_off_distance = 2 # byte 34
+		self.bytes35_37 = b'\x02\x00\xa5' # byte 35-37
+		self.led_effect = LedEffect.PULSATING_RGB_CYCLE # byte 38
+		self.led_frequency = 1 # byte 39
+		self.led_brightness = 10 # byte 40
+		self.profile_id = 1 # byte 41
+		self.byte42 = b'\x00' # byte 42
+		self.colorRgb1 = (0,0,0) # byte 43-45
+		self.colorRgb2 = (0,0,0) # byte 46-48
+		self.colorRgb3 = (0,0,0) # byte 49-51
+		self.colorRgb4 = (0,0,0) # byte 52-54
+		self.colorRgb5 = (0,0,0) # byte 55-57
+		self.colorRgb6 = (0,0,0) # byte 58-60
+		self.colorRgb7 = (0,0,0) # byte 61-63
+		self.byte64 = b'\x00' # byte 64
 
 	def __eq__(self,other):
 		"""Comparison with other object on the basis of their attributes
@@ -248,7 +260,7 @@ class IlluminationSettings:
 		Returns:
 			bool: true if all attribute values are equal
 		"""
-		if not isinstance(other, IlluminationSettings):
+		if not isinstance(other, SettingsMessage):
 			return NotImplemented
 		else:
 			for attr1, attr2 in zip(self.__dict__, other.__dict__):
@@ -260,64 +272,70 @@ class IlluminationSettings:
 			return True
 
 	def toBytes(self) -> bytes:
-		"""Converts the IlluminationSettings object to 26 bytes structure
-
-		byte 1 => state of the seven DPI steps decode in bits
-		sample - bit mask if all steps are enabled
-		 0    1     1     1     1     1     1     1
-		 -   DPI7  DPI6  DPI5  DPI4  DPI3  DPI2  DPI1
-
-		bytes 2-22 => DPI values for each step
+		"""Converts the SettingsMessage object to SettingsMessage.BYTE_SIZE bytes structure
 
 		Returns:
-			bytes: DpiSettings in 22 bytes structure
+			bytes: SettingsMessage in SettingsMessage.BYTE_SIZE bytes structure
 		"""
-		b = bytes([self.led_effect,
-				   self.led_frequency,
-				   self.led_brightness,
-				   self.unknownByte41,
-				   self.profile_id])
-		b += bytes([self.color1[0], self.color1[1], self.color1[2]])
-		b += bytes([self.color2[0], self.color2[1], self.color2[2]])
-		b += bytes([self.color3[0], self.color3[1], self.color3[2]])
-		b += bytes([self.color4[0], self.color4[1], self.color4[2]])
-		b += bytes([self.color5[0], self.color5[1], self.color5[2]])
-		b += bytes([self.color6[0], self.color6[1], self.color6[2]])
-		b += bytes([self.color7[0], self.color7[1], self.color7[2]])
+		b = self.version
+		b += self.message_type
+		b += self.settings_command
+		b += self.bytes5_7
+		b += self.dpi_settings.toBytes()
+		b += self.bytes31_33
+		b += bytes([self.lift_off_distance])
+		b += self.bytes35_37
+		b += bytes([self.led_effect])
+		b += bytes([self.led_frequency])
+		b += bytes([self.led_brightness])
+		b += bytes([self.profile_id])
+		b += self.byte42
+		b += bytes(self.colorRgb1[0:3])
+		b += bytes(self.colorRgb2[0:3])
+		b += bytes(self.colorRgb3[0:3])
+		b += bytes(self.colorRgb4[0:3])
+		b += bytes(self.colorRgb5[0:3])
+		b += bytes(self.colorRgb6[0:3])
+		b += bytes(self.colorRgb7[0:3])
+		b += self.byte64
 
 		return b
 
 	@classmethod
 	def fromBytes(self, b: bytes):
-		"""Creates an IlluminationSettings object from 26 bytes
+		"""Creates an SettingsMessage object from SettingsMessage.BYTE_SIZE bytes
 
 		Args:
-			b (bytes): illumination settings in 26 bytes
+			b (bytes): dpi settings in SettingsMessage.BYTE_SIZE bytes
 
 		Returns:
-			IlluminationSettings: IlluminationSettings object
+			SettingsMessage: SettingsMessage object
 		"""
 
-		if len(b) != 26:
-			raise Light2Error('Wrong byte size, 26 bytes are expected.')
+		if len(b) != SettingsMessage.BYTE_SIZE:
+			raise Light2Error(f'Wrong byte size, {SettingsMessage.BYTE_SIZE} bytes are expected.')
 
-		ils = IlluminationSettings()
-		ils.led_effect = b[0]
-		ils.led_frequency = b[1]
-		ils.led_brightness = b[2]
-		ils.unknownByte41 = b[3]
-		ils.profile_id = b[4]
-		ils.color1 = (b[5], b[6], b[7])
-		ils.color2 = (b[8], b[9], b[10])
-		ils.color3 = (b[11], b[12], b[13])
-		ils.color4 = (b[14], b[15], b[16])
-		ils.color5 = (b[17], b[18], b[19])
-		ils.color6 = (b[20], b[21], b[22])
-		ils.color7 = (b[23], b[24], b[25])
+		msg = SettingsMessage()
+		msg.version = bytes([b[0]])
+		msg.message_type = b[1:3]
+		msg.settings_command = bytes([b[3]])
+		msg.bytes5_7 = b[4:7]
+		msg.dpi_settings = DpiSettings.fromBytes(b[7:30])
+		msg.bytes31_33 = b[30:33]
+		msg.lift_off_distance = int(b[33])
+		msg.bytes35_37 = b[34:37]
+		msg.led_effect = LedEffect(b[37])
+		msg.led_frequency = int(b[38])
+		msg.led_brightness = int(b[39])
+		msg.profile_id = int(b[40])
+		msg.byte42 = bytes([b[41]])
+		msg.colorRgb1 = (int(b[42]), int(b[43]), int(b[44]))
+		msg.colorRgb2 = (int(b[45]), int(b[46]), int(b[47]))
+		msg.colorRgb3 = (int(b[48]), int(b[49]), int(b[50]))
+		msg.colorRgb4 = (int(b[51]), int(b[52]), int(b[53]))
+		msg.colorRgb5 = (int(b[54]), int(b[55]), int(b[56]))
+		msg.colorRgb6 = (int(b[57]), int(b[58]), int(b[59]))
+		msg.colorRgb7 = (int(b[60]), int(b[61]), int(b[62]))
+		msg.byte64 = bytes([b[63]])
 
-		return ils
-
-class Light2Message:
-	def __init__(self):
-		self.version = 4
-		
+		return msg

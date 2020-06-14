@@ -41,8 +41,8 @@ The size of in/out messages are 64 bytes
 | 38 | [LED effect](#LED-effects) | 0x00 - 0x09 |
 | 39 | LED frequency | 0x00 - 0x02 (reversed order, the lower the faster) |
 | 40 | LED brightness | 0x00 - 0x0a (the higher the brighter) |
-| 41 | Unknown | mostly 0x01 |
-| 42 | Settings Profile ID | 0x01 - 0x05 |
+| 41 | Settings Profile ID | 0x01 - 0x05 |
+| 42 | enabled colors?? TODO |  |
 | 43-45 | Color1 (RGB) | 0x000000 |
 | 46-48 | Color2 (RGB) | 0x000000 |
 | 49-51 | Color3 (RGB) | 0x000000 |
