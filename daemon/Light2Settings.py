@@ -222,7 +222,7 @@ class DpiSettings:
 		ds.dpi6_value = Dpi.fromBytes(b[16:19])
 		ds.dpi7_value = Dpi.fromBytes(b[19:22])
 
-		return ds;
+		return ds
 
 class IlluminationSettings:
 	def __init__(self):
@@ -316,3 +316,8 @@ class IlluminationSettings:
 		ils.color7 = (b[23], b[24], b[25])
 
 		return ils
+
+class Light2Message:
+	def __init__(self):
+		self.version = 4
+		

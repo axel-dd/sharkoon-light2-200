@@ -1,3 +1,5 @@
 ## Sharkoon Light² 200 Gaming Maus
 
-TODO
+Mouse configuration daemon for Linux
+
+WIP
