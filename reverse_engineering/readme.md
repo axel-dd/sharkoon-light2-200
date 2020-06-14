@@ -106,6 +106,8 @@ The same message data that was sent.
 
 ## DPI steps encoding
 
+<img src="windows_ui/DPI-Settings.png" alt="" width="400"/>
+
 The ON/OFF state of the seven DPI steps is encoded in a bit mask of one byte.
 
 | Bit | Description | Value |
@@ -137,6 +139,8 @@ The protocol data value for X-axis is stored in the first four bits of the first
 
 ## Lift-Off distance
 
+<img src="windows_ui/Advanced_Settings.png" alt="" width="400"/>
+
 | UI value | Byte value |
 |---|---|
 | 1 | 0x02 |
@@ -145,18 +149,18 @@ The protocol data value for X-axis is stored in the first four bits of the first
 
 ## LED effects
 
-| LED effect | Byte value | More settings supported |
+| LED effect | Byte value | |
 |---|---|---|
-| Pulsating RGB Cycle | 0x00 | Frequency, Brightness |
-| Pulsating | 0x01 | Frequency, Brightness, Color1 |
-| Permanent | 0x02 | Brightness, Color1 |
-| Color Change | 0x03 | Frequency, Brightness, Color1 |
-| Single Color Marquee | 0x04 | Frequency, Brightness, Color1 |
-| Multi Color Marquee | 0x05 | Frequency, Brightness, Color1 - Color7 |
-| Ripple Effect | 0x06 | Frequency, Brightness |
-| Trigger | 0x07 | Frequency, Brightness, Color1 - Color7 |
-| Heartbeat | 0x08 | Frequency, Brightness, Color1 |
-| LED OFF | 0x09 | none |
+| Pulsating RGB Cycle | 0x00 | <img src="windows_ui/00_Pulsating_RGB_Cycle.png" alt="" width="400"/> |
+| Pulsating | 0x01 | <img src="windows_ui/01_Pulsating.png.png" alt="" width="400"/> |
+| Permanent | 0x02 | <img src="windows_ui/02_Permanent.png" alt="" width="400"/> |
+| Color Change | 0x03 | <img src="windows_ui/03_Color_Change.png" alt="" width="400"/> |
+| Single Color Marquee | 0x04 | <img src="windows_ui/04_Single_Color_Marquee.png" alt="" width="400"/> |
+| Multi Color Marquee | 0x05 | <img src="windows_ui/05_Multi_Color_Marquee.png" alt="" width="400"/> |
+| Ripple Effect | 0x06 | <img src="windows_ui/06_Ripple_Effect.png" alt="" width="400"/> |
+| Trigger | 0x07 | <img src="windows_ui/07_Trigger.png" alt="" width="400"/> |
+| Heartbeat | 0x08 | <img src="windows_ui/08_Heartbeat.png" alt="" width="400"/> |
+| LED OFF | 0x09 | <img src="windows_ui/09_LED_OFF.png" alt="" width="400"/> |
 
 ## USB device details
 
