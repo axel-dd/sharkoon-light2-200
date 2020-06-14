@@ -77,8 +77,8 @@ The size of in/out messages are 64 bytes
 | 38 | [LED effect](#LED-effects) | 0x00 - 0x09 |
 | 39 | LED frequency | 0x00 - 0x02 (reversed order, the lower the faster) |
 | 40 | LED brightness | 0x00 - 0x0a (the higher the brighter) |
-| 41 | Unknown | mostly 0x01 |
-| 42 | Settings Profile ID | 0x01 - 0x05 |
+| 41 | Settings Profile ID | 0x01 - 0x05 |
+| 42 | enabled colors?? TODO |  |
 | 43-45 | Color1 (RGB) | 0x000000 |
 | 46-48 | Color2 (RGB) | 0x000000 |
 | 49-51 | Color3 (RGB) | 0x000000 |
@@ -149,10 +149,10 @@ The protocol data value for X-axis is stored in the first four bits of the first
 
 ## LED effects
 
-| LED effect | Byte value | |
+| LED effect | Byte value | Supported illumination settings |
 |---|---|---|
 | Pulsating RGB Cycle | 0x00 | <img src="windows_ui/00_Pulsating_RGB_Cycle.png" alt="" width="400"/> |
-| Pulsating | 0x01 | <img src="windows_ui/01_Pulsating.png.png" alt="" width="400"/> |
+| Pulsating | 0x01 | <img src="windows_ui/01_Pulsating.png" alt="" width="400"/> |
 | Permanent | 0x02 | <img src="windows_ui/02_Permanent.png" alt="" width="400"/> |
 | Color Change | 0x03 | <img src="windows_ui/03_Color_Change.png" alt="" width="400"/> |
 | Single Color Marquee | 0x04 | <img src="windows_ui/04_Single_Color_Marquee.png" alt="" width="400"/> |
